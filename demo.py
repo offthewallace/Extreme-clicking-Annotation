@@ -20,23 +20,17 @@ point3x=367
 point3y=635
 point4x=617
 point4y=571
+point5x=500
+point5y=315
 
 xmin = min(point1x,point2x,point3x,point4x)
 xmax =max(point1x,point2x,point3x,point4x)
 ymin=min(point1y,point2y,point3y,point4y)
 ymax=max(point1y,point2y,point3y,point4y)
 
-extremPoint=[]
-#img2=img[][]
 img = img[ymin:ymax,xmin:xmax]
 (ROW,COL,_)= img.shape
 print(ROW,COL)
-detector = cv2.ximgproc.createStructuredEdgeDetection('model.yml.gz')
-rgb_im = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-
-
-
 
 class cell:
 	def __init__(self, x, y, distance):
@@ -51,27 +45,26 @@ class cell:
 			return False
 
 
-def isInsideGrid(i, j): 
+def notInsideGrid(i, j): 
 
-	return (i >= 0 and i < COL and j >= 0 and j < ROW) 
+	return (i < 0 or i >= ROW or j < 0 or j >= COL) 
 
-def printPath(parent, startY,startX,i,j,img): 
-	
-	#Base Case : If j is source 
-	#if parent[i][j][1] == -1: 
-	#	print (i,j)
-	#	return
-	#printPath(parent,parent[i][j][0],parent[i][j][1]) 
-	#print (i,j) 
-	while not i==-1 or not j ==-1:
+def printPath(parent,i,j,img): 
+ 
+	while True:
 		print(i,j)
 		img[i][j]=(0, 255, 0)
 		i = parent[i][j][0]
-		j=parent[i][j][1] 
+		j=parent[i][j][1]
+		if i ==-1 or j ==-1:
+			break
+	print('done by plot') 
 	return img
+
+
 # Method returns minimum cost to reach bottom 
 # right from top left 
-def shortest(grid, row, col,StartRow,StartCol,desRow,desCol):
+def shortest(grid, row, col,StartRow,StartCol):
 
 
 	dis= [[float("Inf") for x in range(col)] for x in range(row)]
@@ -82,8 +75,7 @@ def shortest(grid, row, col,StartRow,StartCol,desRow,desCol):
 		for y in range(col):
 			parent[x][y].append(-1)
 			parent[x][y].append(-1)
-	#print(parent)
-	#print(parent)
+
 	# direction arrays for simplification of getting  neighbour 
 	dx = [-1, 0, 1, 0] 
 	dy = [0, 1, 0, -1]
@@ -101,28 +93,30 @@ def shortest(grid, row, col,StartRow,StartCol,desRow,desCol):
 	
 		# get the cell with minimum distance and delete 
 		# it from the set 
-		k = st.pop()
-		#st.erase(st.begin()); 
+		k = st.pop() 
 		print("k.x is",k.x)
 		print('k.y is ',k.y)
-		if k.x == desRow and k.y == desCol:
-					print('done')
-					break
 
 		# looping through all neighbours 
 		for i in range(4): 
 			x = k.x + dx[i] 
 			y = k.y + dy[i] 
+			print("x is",x)
+			print('y is ',y)
+			#if k.x == desRow and k.y == desCol:
+			#	print('done')
+             #   break
+
 			# if not inside boundry, ignore them 
-			if not isInsideGrid(x, y): 
+			if notInsideGrid(x, y): 
 				continue
 
 			# If distance from current cell is smaller, then 
 			# update distance of neighbour cell 
 			if dis[x][y] > dis[k.x][k.y] + grid[x][y]:
+
 				# If cell is already there in set, then 
 				# remove its previous entry 
-				
 				if dis[x][y] != float("Inf"):
 					st.remove(cell(x, y, dis[x][y])) 
 
@@ -130,45 +124,54 @@ def shortest(grid, row, col,StartRow,StartCol,desRow,desCol):
 				# cell in set 
 				#print('update')
 				dis[x][y] = dis[k.x][k.y] + grid[x][y] 
-				print("x is",x)
-				print('y is ',y)
+				
 				st.append(cell(x, y, dis[x][y]))
 
-				st.sort(key=lambda x: x.distance, reverse=True)
+				
 				parent[x][y]=[]
 				parent[x][y].append(k.x)
 				parent[x][y].append(k.y)
 				print('parent[x][y] is',parent[x][y])
-				
-	#printPath(parent, desRow,desCol)
+		st.sort(key=lambda x: x.distance, reverse=True)
+	#img = printPath(parent, desRow,desCol,img)
 	#print(dis)
 
-	return dis[row - 1][col - 1], parent
+	return dis[row - 1][col - 1], parent,img
+
+
+detector = cv2.ximgproc.createStructuredEdgeDetection('model.yml.gz')
+rgb_im = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)	
 im = detector.detectEdges(np.float32(rgb_im) / 255.0)
 orimap = detector.computeOrientation(im)
 edges = detector.edgesNms(im, orimap)
 
 Matrix = edges.tolist()
-print((Matrix[ROW-1][COL-1]))
 
 for x in range(len(edges.tolist())):
 	for y in range(len(edges.tolist()[0])):
 		Matrix[x][y]=1-Matrix[x][y]
 		if Matrix[x][y] ==1:
-			Matrix[x][y]+=5
+			Matrix[x][y]=1000
 
-print(point1y-ymin,point1x-xmin,point2y-ymin,point2x-xmin)
-dist,parent=shortest(Matrix, ROW, COL,point1y-ymin,point1x-xmin,point2y-ymin,point2x-xmin)
-print(point1y-ymin,point1x-xmin,point2y-ymin,point2x-xmin)
-print(parent[253][1])
-#print(point2y-ymin,point2x-xmin)
-#print(parent[point2y-ymin][point2x-xmin])
+dist1,parent1=shortest(Matrix, ROW, COL,max(point1y-ymin-1,0),max(point1x-xmin-1,0))
+
+dist2,parent2=shortest(Matrix, ROW, COL,max(point2y-ymin-1,0),max(point2x-xmin-1,0))
+
+dist3,parent3=shortest(Matrix, ROW, COL,max(point3y-ymin-1,0),max(point3x-xmin-1,0))
+
+dist4,parent4=shortest(Matrix, ROW, COL,max(point4y-ymin-1,0),max(point4x-xmin-1,0))
+
+dist5,parent5=shortest(Matrix, ROW, COL,max(point5y-ymin-1,0),max(point5x-xmin-1,0))
 
 
-img = printPath(parent, point1y-ymin,point1x-xmin,point2y-ymin,point2x-xmin,img)
-print(dist)
+img=printPath(parent1,max(point2y-ymin-1,0),max(point2x-xmin-1,0),img)
+img=printPath(parent2,max(point3y-ymin-1,0),max(point3x-xmin-1,0),img)
+img=printPath(parent3,max(point4y-ymin-1,0),max(point4x-xmin-1,0),img)
+img=printPath(parent4,max(point5y-ymin-1,0),max(point5x-xmin-1,0),img)
+printPath(parent1,max(point5y-ymin-1,0),max(point5x-xmin-1,0),img)
+
 cv2.imwrite('left.jpg',img)
-
+print('done')
 
 #cv2.imshow("edges", im)
 #cv2.imshow("edgeboxes", edges)
