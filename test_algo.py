@@ -28,7 +28,20 @@ rgb_im = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 im = detector.detectEdges(np.float32(rgb_im) / 255.0)
 orimap = detector.computeOrientation(im)
 edges = detector.edgesNms(im, orimap)
+for x in range(len(edges.tolist())):
+	for y in range(len(edges.tolist()[0])):
+		im[x][y]=1-im[x][y]
+		edges[x][y]=1-edges[x][y]
+		#if Matrix[x][y] ==1:
+		#	Matrix[x][y]=1000
+mask = np.zeros(img.shape[:2],np.uint8)
+bgdModel = np.zeros((1,65),np.float64)
+fgdModel = np.zeros((1,65),np.float64)
+	#rect = (max(0,xmin-25),max(0,ymin-25),xmax-25,ymax-25)
+rect=(xmin,ymin,xmax,ymax)
+cv.grabCut(img,mask,rect,bgdModel,fgdModel,5,cv.GC_INIT_WITH_RECT)
 
+print(im.shape)
 cv2.imshow("edges", im)
 cv2.imshow("edgeboxes", edges)
 cv2.waitKey(0)
